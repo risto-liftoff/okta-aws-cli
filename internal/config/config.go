@@ -124,6 +124,8 @@ const (
 	ExpiryAWSVariablesFlag = "expiry-aws-variables"
 	// CacheAccessTokenFlag cli flag const
 	CacheAccessTokenFlag = "cache-access-token"
+	// BrowserAuthFlag cli flag const
+	BrowserAuthFlag = "browser-auth"
 
 	// UsernameFlag cli flag const
 	UsernameFlag = "username"
@@ -197,6 +199,9 @@ const (
 	// WriteAWSCredentialsEnvVar env var const
 	WriteAWSCredentialsEnvVar = "OKTA_AWSCLI_WRITE_AWS_CREDENTIALS"
 
+	// BrowserAuthEnvVar env var const
+	BrowserAuthEnvVar = "OKTA_AWSCLI_BROWSER_AUTH"
+
 	// UsernameEnvVar env var const
 	UsernameEnvVar = "OKTA_AWSCLI_USERNAME"
 	// PasswordEnvVar env var const
@@ -258,6 +263,7 @@ type OktaYamlConfigProfile struct {
 	LegacyAWSVariables    string `yaml:"legacy-aws-variables"`
 	ExpiryAWSVariables    string `yaml:"expiry-aws-variables"`
 	CacheAccessToken      string `yaml:"cache-access-token"`
+	BrowserAuth           string `yaml:"browser-auth"`
 	Username              string `yaml:"username"`
 	Password              string `yaml:"password"`
 }
@@ -282,6 +288,7 @@ type Config struct {
 	awsRegion             string
 	awsSessionDuration    int64
 	awsSTSRoleSessionName string
+	browserAuth           bool
 	cacheAccessToken      bool
 	customScope           string
 	debug                 bool
@@ -319,6 +326,7 @@ type Attributes struct {
 	AWSRegion             string
 	AWSSessionDuration    int64
 	AWSSTSRoleSessionName string
+	BrowserAuth           bool
 	CacheAccessToken      bool
 	CustomScope           string
 	Debug                 bool
@@ -379,6 +387,7 @@ func NewConfig(attrs *Attributes) (*Config, error) {
 		awsRegion:             attrs.AWSRegion,
 		awsSessionDuration:    attrs.AWSSessionDuration,
 		awsSTSRoleSessionName: attrs.AWSSTSRoleSessionName,
+		browserAuth:           attrs.BrowserAuth,
 		cacheAccessToken:      attrs.CacheAccessToken,
 		customScope:           attrs.CustomScope,
 		debug:                 attrs.Debug,
@@ -507,6 +516,7 @@ func loadConfigAttributesFromFlagsAndVars() (Attributes, error) {
 		Format:                viper.GetString(getFlagNameFromProfile(awsProfile, FormatFlag)),
 		LegacyAWSVariables:    viper.GetBool(getFlagNameFromProfile(awsProfile, LegacyAWSVariablesFlag)),
 		ExpiryAWSVariables:    viper.GetBool(getFlagNameFromProfile(awsProfile, ExpiryAWSVariablesFlag)),
+		BrowserAuth:           viper.GetBool(getFlagNameFromProfile(awsProfile, BrowserAuthFlag)),
 		CacheAccessToken:      viper.GetBool(getFlagNameFromProfile(awsProfile, CacheAccessTokenFlag)),
 		OIDCAppID:             viper.GetString(getFlagNameFromProfile(awsProfile, OIDCClientIDFlag)),
 		OpenBrowser:           viper.GetBool(getFlagNameFromProfile(awsProfile, OpenBrowserFlag)),
@@ -666,6 +676,9 @@ func loadConfigAttributesFromFlagsAndVars() (Attributes, error) {
 	if !attrs.CacheAccessToken {
 		attrs.CacheAccessToken = viper.GetBool(downCase(CacheAccessTokenEnvVar))
 	}
+	if !attrs.BrowserAuth {
+		attrs.BrowserAuth = viper.GetBool(downCase(BrowserAuthEnvVar))
+	}
 	if !attrs.ShortUserAgent {
 		attrs.ShortUserAgent = viper.GetBool(downCase(ShortUserAgentEnvVar))
 	}
@@ -776,6 +789,17 @@ func (c *Config) AWSSTSRoleSessionName() string {
 // SetAWSSTSRoleSessionName --
 func (c *Config) SetAWSSTSRoleSessionName(name string) error {
 	c.awsSTSRoleSessionName = name
+	return nil
+}
+
+// BrowserAuth --
+func (c *Config) BrowserAuth() bool {
+	return c.browserAuth
+}
+
+// SetBrowserAuth --
+func (c *Config) SetBrowserAuth(browserAuth bool) error {
+	c.browserAuth = browserAuth
 	return nil
 }
 

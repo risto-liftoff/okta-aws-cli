@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	osexec "os/exec"
 	"regexp"
 	"strings"
 	"sync"
@@ -42,7 +41,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/shlex"
 	"github.com/mdp/qrterminal"
-	brwsr "github.com/pkg/browser"
 	"golang.org/x/net/html"
 
 	oaws "github.com/okta/okta-aws-cli/v2/internal/aws"
@@ -134,13 +132,15 @@ func (w *WebSSOAuthentication) EstablishIAMCredentials() error {
 
 	at = utils.CachedAccessToken(w.config)
 	if at == nil {
-		deviceAuth, err := w.authorize()
-		if err != nil {
-			return err
+		if w.config.BrowserAuth() {
+			at, err = w.authorizeWithBrowser()
+			if err == errAllPortsBusy {
+				w.consolePrint("All browser auth callback ports are busy, falling back to device authorization...\n\n")
+				at, err = w.authorizeWithDevice()
+			}
+		} else {
+			at, err = w.authorizeWithDevice()
 		}
-
-		w.promptAuthentication(deviceAuth)
-		at, err = w.accessToken(deviceAuth)
 		if err != nil {
 			return err
 		}
@@ -694,30 +694,8 @@ func (w *WebSSOAuthentication) promptAuthentication(da *okta.DeviceAuthorization
 
 	w.consolePrint(prompt, openMsg, qrCode, da.VerificationURIComplete)
 
-	if w.config.OpenBrowserCommand() != "" {
-		bCmd := w.config.OpenBrowserCommand()
-		if bCmd != "" {
-			bArgs, err := splitArgs(bCmd)
-			if err != nil {
-				w.consolePrint("Browser command %q is invalid: %v\n", bCmd, err)
-				return
-			}
-			bArgs = append(bArgs, da.VerificationURIComplete)
-			cmd := osexec.Command(bArgs[0], bArgs[1:]...)
-			out, err := cmd.Output()
-			if err != nil {
-				w.consolePrint("Failed to open activation URL with given browser: %v\n", err)
-				w.consolePrint("  %s\n", strings.Join(bArgs, " "))
-			}
-			if len(out) > 0 {
-				w.consolePrint("browser output:\n%s\n", string(out))
-			}
-		}
-	} else if w.config.OpenBrowser() {
-		brwsr.Stdout = os.Stderr
-		if err := brwsr.OpenURL(da.VerificationURIComplete); err != nil {
-			w.consolePrint("Failed to open activation URL with system browser: %v\n", err)
-		}
+	if w.config.OpenBrowserCommand() != "" || w.config.OpenBrowser() {
+		w.openBrowserToURL(da.VerificationURIComplete)
 	}
 }
 
@@ -829,6 +807,17 @@ func (w *WebSSOAuthentication) accessToken(deviceAuth *okta.DeviceAuthorization)
 	}
 
 	return
+}
+
+// authorizeWithDevice performs the device authorization flow: authorize,
+// prompt the user, and poll for an access token.
+func (w *WebSSOAuthentication) authorizeWithDevice() (*okta.AccessToken, error) {
+	deviceAuth, err := w.authorize()
+	if err != nil {
+		return nil, err
+	}
+	w.promptAuthentication(deviceAuth)
+	return w.accessToken(deviceAuth)
 }
 
 // authorize see:
