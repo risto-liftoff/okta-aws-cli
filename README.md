@@ -88,12 +88,20 @@ export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 export AWS_SESSION_TOKEN=AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5T...
 ```
 
-Web command is the human oriented device authorization mode. The user executes
+Web command is the human oriented authorization mode. By default it uses [device
+authorization](https://datatracker.ietf.org/doc/html/rfc8628): the user executes
 `okta-aws-cli web` to retrieve an authorization URL. The user can copy/paste the
 URL into a web browser, have the CLI open a web browser, or have the CLI print a
 QR code that can be scanned by a handset to open a web browser there. After the
 human completes the authorization flow in a browser they return to the CLI to
 complete the process of retrieving AWS credentials.
+
+Alternatively, the `--browser-auth` flag enables an [Authorization Code + PKCE
+](https://datatracker.ietf.org/doc/html/rfc7636) flow that starts a local
+HTTP server, opens the browser directly to Okta's authorize endpoint, and
+receives the callback automatically — no copy/paste or device code entry
+required. If all callback ports are busy, it falls back to the device
+authorization flow.
 
 Web command is an integration that pairs an Okta [OIDC Native
 Application](https://developer.okta.com/blog/2021/11/12/native-sso) with an
@@ -139,6 +147,20 @@ provider](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_cr
 The OIDC Native Application requires Grant Types `Authorization Code`, `Device
 Authorization` , and `Token Exchange`. These settings are in the Okta Admin UI
 at `Applications > [the OIDC app] > General Settings > Grant type`.
+
+If using `--browser-auth`, the OIDC app also needs **Login redirect URIs** for
+the localhost callback. The CLI tries the following ports in order:
+`29219, 30841, 31425, 32587, 33149, 34762, 35918, 36043, 37651, 38297`.
+Add a redirect URI for each port you want to support, e.g.:
+
+```
+http://127.0.0.1:29219/callback
+http://127.0.0.1:30841/callback
+...
+```
+
+These are configured at `Applications > [the OIDC app] > General Settings >
+Login > Sign-in redirect URIs`.
 
 If [Multiple AWS environments](#multiple-aws-environments) (alleviates the need
 for use of the `--aws-acct-fed-app-id` argument) are to be supported by a single
@@ -500,6 +522,7 @@ These settings are all optional:
 | Display QR Code | `true` if flag is present | `--qr-code` | `OKTA_AWSCLI_QR_CODE=true` |
 | Automatically open the activation URL with the system web browser | `true` if flag is present | `--open-browser` | `OKTA_AWSCLI_OPEN_BROWSER=true` |
 | Automatically open the activation URL with the given web browser command | Shell escaped browser command | `--open-browser-command [command]` | `OKTA_AWSCLI_OPEN_BROWSER_COMMAND` |
+| Use browser-based Authorization Code + PKCE flow instead of device authorization. Requires redirect URIs configured in the OIDC app. Falls back to device authorization if all callback ports are busy. | `true` if flag is present | `--browser-auth` | `OKTA_AWSCLI_BROWSER_AUTH=true` |
 | Gather all profiles for all IdPs and Roles associated with an AWS Fed App (implies aws-credentials file output format) | `true` if flag is present | `--all-profiles` | `OKTA_AWSCLI_OPEN_BROWSER=true` |
 
 #### Allowed Web SSO Client ID
