@@ -76,6 +76,13 @@ var (
 			Usage:  "Collect all profiles for a given IdP (implies aws-credentials file output format)",
 			EnvVar: config.AllProfilesEnvVar,
 		},
+		{
+			Name:   config.BrowserAuthFlag,
+			Short:  "t",
+			Value:  false,
+			Usage:  "Use Authorization Code + PKCE flow with localhost redirect instead of device authorization",
+			EnvVar: config.BrowserAuthEnvVar,
+		},
 	}
 	requiredFlags = []interface{}{"org-domain", "oidc-client-id"}
 )
